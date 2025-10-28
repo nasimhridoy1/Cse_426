@@ -1,1 +1,82 @@
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
 
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+// --------- GLOBAL SETTINGS ---------
+constexpr int WINDOW_WIDTH = 500;
+constexpr int WINDOW_HEIGHT = 500;
+
+// User-defined line parameters
+int xStart = 50, yStart = 50;
+int xEnd   = 400, yEnd = 300;
+int lineThickness = 3;
+
+// Draw a single pixel
+void drawPixel(int x, int y) {
+    glBegin(GL_POINTS);
+    glVertex2i(x, y);
+    glEnd();
+}
+
+// Draw a thick pixel bar centered at (x, y)
+void drawThickBar(int x, int y, bool steep, int thickness) {
+    int offset = thickness / 2;
+    for (int i = -offset; i <= offset; ++i) {
+        steep ? drawPixel(x + i, y) : drawPixel(x, y + i);
+    }
+}
+
+// Generalized Bresenham line algorithm with thickness
+void drawThickLine(int x1, int y1, int x2, int y2, int thickness) {
+    int dx = abs(x2 - x1), dy = abs(y2 - y1);
+    int sx = (x1 < x2) ? 1 : -1;
+    int sy = (y1 < y2) ? 1 : -1;
+    bool steep = dy > dx;
+
+    int err = steep ? 2 * dx - dy : 2 * dy - dx;
+    int x = x1, y = y1;
+    int steps = steep ? dy : dx;
+
+    for (int i = 0; i <= steps; ++i) {
+        drawThickBar(x, y, steep, thickness);
+
+        if (!steep) {
+            if (err > 0) {
+                y += sy;
+                err -= 2 * dx;
+            }
+            x += sx;
+            err += 2 * dy;
+        } else {
+            if (err > 0) {
+                x += sx;
+                err -= 2 * dy;
+            }
+            y += sy;
+            err += 2 * dx;
+        }
+    }
+}
+
+// Display callback
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw axis lines
+    glColor3f(0.3f, 0.3f, 0.3f);
+    glBegin(GL_LINES);
+        glVertex2i(0, WINDOW_HEIGHT / 2);
+        glVertex2i(WINDOW_WIDTH, WINDOW_HEIGHT / 2);
+        glVertex2i(WINDOW_WIDTH / 2, 0);
+        glVertex2i(WINDOW_WIDTH / 2, WINDOW_HEIGHT);
+    glEnd();
+
+    // Draw thick line
+    glColor3f(1.0f, 1.0f, 1.0f);
+    drawThickLine(xStart, y
