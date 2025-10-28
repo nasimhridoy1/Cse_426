@@ -106,7 +106,7 @@ void setupOpenGL() {
 // Main function
 int main(int argc, char** argv) {
     cout << "🎯 Ring Painter Configuration\n";
-    cout << "Enter center coordinates (e.g. 320 240): ";
+    cout << " center coordinates (e.g. 120 240): ";
     cin >> centerX >> centerY;
 
     cout << "Enter number of rings: ";
