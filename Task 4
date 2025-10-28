@@ -1,1 +1,156 @@
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
+
+#include <iostream>
+#include <vector>
+#include <cmath>
+using namespace std;
+
+// ========================= CONSTANTS =========================
+constexpr int WINDOW_WIDTH = 600;
+constexpr int WINDOW_HEIGHT = 600;
+
+// Default clipping window
+float clipXMin = 100.0f, clipYMin = 100.0f;
+float clipXMax = 400.0f, clipYMax = 300.0f;
+
+// ========================= STRUCTURES =========================
+struct Point {
+    float x, y;
+};
+
+struct Line {
+    Point start, end;
+};
+
+vector<Line> lines;
+
+// ========================= FUNCTION PROTOTYPES =========================
+void drawLine(float x1, float y1, float x2, float y2);
+void drawClippingWindow(float xmin, float ymin, float xmax, float ymax);
+bool liangBarsky(float xmin, float ymin, float xmax, float ymax,
+                 Point p0, Point p1, Point &clippedStart, Point &clippedEnd);
+void display();
+void initGL();
+
+// ========================= DRAWING FUNCTIONS =========================
+void drawLine(float x1, float y1, float x2, float y2) {
+    glBegin(GL_LINES);
+    glVertex2f(x1, y1);
+    glVertex2f(x2, y2);
+    glEnd();
+}
+
+void drawClippingWindow(float xmin, float ymin, float xmax, float ymax) {
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(xmin, ymin);
+    glVertex2f(xmax, ymin);
+    glVertex2f(xmax, ymax);
+    glVertex2f(xmin, ymax);
+    glEnd();
+}
+
+// ========================= LIANG-BARSKY CLIPPING =========================
+bool liangBarsky(float xmin, float ymin, float xmax, float ymax,
+                 Point p0, Point p1, Point &clippedStart, Point &clippedEnd) {
+    float dx = p1.x - p0.x;
+    float dy = p1.y - p0.y;
+    float u1 = 0.0f, u2 = 1.0f;
+
+    auto clip = [&](float p, float q) -> bool {
+        if (fabs(p) < 1e-6f) return q >= 0.0f;
+        float r = q / p;
+        if (p < 0.0f) {
+            if (r > u2) return false;
+            if (r > u1) u1 = r;
+        } else {
+            if (r < u1) return false;
+            if (r < u2) u2 = r;
+        }
+        return true;
+    };
+
+    if (!clip(-dx, p0.x - xmin)) return false;
+    if (!clip( dx, xmax - p0.x)) return false;
+    if (!clip(-dy, p0.y - ymin)) return false;
+    if (!clip( dy, ymax - p0.y)) return false;
+
+    if (u2 < u1) return false;
+
+    clippedStart = { p0.x + u1 * dx, p0.y + u1 * dy };
+    clippedEnd   = { p0.x + u2 * dx, p0.y + u2 * dy };
+    return true;
+}
+
+// ========================= DISPLAY CALLBACK =========================
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw clipping window
+    glColor3f(0.0f, 1.0f, 1.0f); // Cyan
+    drawClippingWindow(clipXMin, clipYMin, clipXMax, clipYMax);
+
+    // Draw lines
+    for (const auto& line : lines) {
+        // Original line (gray)
+        glColor3f(0.6f, 0.6f, 0.6f);
+        drawLine(line.start.x, line.start.y, line.end.x, line.end.y);
+
+        // Clipped portion (yellow)
+        Point clippedStart, clippedEnd;
+        if (liangBarsky(clipXMin, clipYMin, clipXMax, clipYMax,
+                        line.start, line.end, clippedStart, clippedEnd)) {
+            glColor3f(1.0f, 1.0f, 0.0f);
+            drawLine(clippedStart.x, clippedStart.y, clippedEnd.x, clippedEnd.y);
+        }
+    }
+
+    glFlush();
+}
+
+// ========================= OPENGL INITIALIZATION =========================
+void initGL() {
+    glClearColor(0.0, 0.0, 0.0, 1.0); // Black background
+    glLineWidth(2.0f);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+// ========================= MAIN FUNCTION =========================
+int main(int argc, char** argv) {
+    cout << "Enter clipping window (xmin ymin xmax ymax): ";
+    cin >> clipXMin >> clipYMin >> clipXMax >> clipYMax;
+
+    if (clipXMin > clipXMax) swap(clipXMin, clipXMax);
+    if (clipYMin > clipYMax) swap(clipYMin, clipYMax);
+
+    int count;
+    cout << "How many lines? ";
+    cin >> count;
+    lines.resize(count);
+
+    for (int i = 0; i < count; ++i) {
+        cout << "Line " << i + 1 << " (x1 y1 x2 y2): ";
+        cin >> lines[i].start.x >> lines[i].start.y
+             >> lines[i].end.x   >> lines[i].end.y;
+    }
+
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("Liang-Barsky Line Clipping");
+
+    initGL();
+    glutDisplayFunc(display);
+    glutMainLoop();
+
+    return 0;
+}
 
